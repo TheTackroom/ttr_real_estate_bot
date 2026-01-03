@@ -93,23 +93,42 @@ async function extractPostData(channel) {
 // Send data to Base44
 async function sendToBase44(inquiryData) {
     try {
+        const payload = {
+            discord_id: inquiryData.discordId,
+            confirmation_phrase: inquiryData.confirmationPhrase,
+            property_type: inquiryData.propertyType,
+            property_size: inquiryData.propertySize,
+            general_location: inquiryData.generalLocation,
+            location_images: inquiryData.images
+        };
+
+        console.log('Sending to Base44:', CONFIG.BASE44_ENDPOINT);
+        console.log('Payload:', JSON.stringify(payload, null, 2));
+
         const response = await fetch(CONFIG.BASE44_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                discord_id: inquiryData.discordId,
-                confirmation_phrase: inquiryData.confirmationPhrase,
-                property_type: inquiryData.propertyType,
-                property_size: inquiryData.propertySize,
-                general_location: inquiryData.generalLocation,
-                location_images: inquiryData.images
-            })
+            body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
-        return { success: response.ok, data: result };
+        // Get the raw text first to see what we're actually getting
+        const rawText = await response.text();
+        console.log('Base44 Response Status:', response.status);
+        console.log('Base44 Raw Response:', rawText.substring(0, 500));
+
+        // Try to parse as JSON
+        try {
+            const result = JSON.parse(rawText);
+            return { success: response.ok, data: result };
+        } catch (parseError) {
+            console.error('Failed to parse response as JSON');
+            return { 
+                success: false, 
+                error: `Base44 returned non-JSON response (Status ${response.status}): ${rawText.substring(0, 200)}` 
+            };
+        }
     } catch (error) {
         console.error('Base44 API Error:', error);
         return { success: false, error: error.message };
